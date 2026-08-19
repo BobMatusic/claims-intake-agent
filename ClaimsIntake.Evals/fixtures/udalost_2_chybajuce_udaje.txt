@@ -1,0 +1,24 @@
+HLÁSENIE POISTNEJ UDALOSTI
+Poisťovňa Demo, a.s. · formulár HPU-01 · číslo hlásenia HPU-2026-004902
+A. Údaje o poistníkovi
+Meno a priezvisko:
+Mária Kováčová
+Adresa:
+Záhradnícka 8, 040 01 Košice
+Telefón:
+E-mail:
+m.kovacova@example.sk
+B. Údaje o poistnej zmluve
+Číslo poistnej zmluvy:
+SK9876543210
+Druh poistenia:
+Poistenie domácnosti
+C. Údaje o poistnej udalosti
+Dátum vzniku udalosti:
+Miesto vzniku udalosti:
+D. Popis škodovej udalosti
+Stalo sa to minulý týždeň, presný dátum si už nepamätám. Niečo sa pokazilo a je to poškodené. Prosím o kontaktovanie, doplním údaje neskôr.
+E. Vyhlásenie poistníka
+Poskytnutím údajov v tomto formulári potvrdzujem správnosť a úplnosť uvedených informácií. Beriem na vedomie, že uvedenie nepravdivých údajov môže viesť ku kráteniu alebo zamietnutiu poistného plnenia podľa § 799 Občianskeho zákonníka. Osobné údaje sú spracúvané v súlade s nariadením GDPR na účely likvidácie poistnej udalosti.
+Dátum a podpis poistníka:
+Poisťovňa Demo, a.s., Príkladná 12, 811 01 Bratislava · IČO: 12345678 · zapísaná v OR OS Bratislava I, odd. Sa, vl. 999/B · infolinka 0850 123 456 · www.demo-poistovna.sk

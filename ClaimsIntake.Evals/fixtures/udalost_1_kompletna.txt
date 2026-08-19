@@ -1,0 +1,27 @@
+HLÁSENIE POISTNEJ UDALOSTI
+Poisťovňa Demo, a.s. · formulár HPU-01 · číslo hlásenia HPU-2026-004871
+A. Údaje o poistníkovi
+Meno a priezvisko:
+Ján Novák
+Adresa:
+Hlavná 24, 949 01 Nitra
+Telefón:
++421 905 112 334
+E-mail:
+jan.novak@example.sk
+B. Údaje o poistnej zmluve
+Číslo poistnej zmluvy: SK1234567890
+Druh poistenia: Havarijné poistenie motorového vozidla (KASKO)
+C. Údaje o poistnej udalosti
+Dátum vzniku udalosti:
+12.07.2026
+Miesto vzniku udalosti:
+Nitra, parkovisko OC Mlyny
+D. Popis škodovej udalosti
+Pri vychádzaní z parkovacieho miesta do môjho stojaceho auta narazilo iné vozidlo. Poškodený je zadný nárazník, pravé zadné svetlo a blatník. Auto je pojazdné. Škoda bola nahlásená na políciu, spísaná zápisnica č. PZ-2026-11238. Odhadovaná výška škody približne 1 800 EUR.
+F. Údaje o vozidle
+Značka a model: Škoda Octavia III, EČV: NR-123AB, VIN: TMBJ7NEOF0123456, rok výroby 2015, stav tachometra 187 400 km.
+E. Vyhlásenie poistníka
+Poskytnutím údajov v tomto formulári potvrdzujem správnosť a úplnosť uvedených informácií. Beriem na vedomie, že uvedenie nepravdivých údajov môže viesť ku kráteniu alebo zamietnutiu poistného plnenia podľa § 799 Občianskeho zákonníka. Osobné údaje sú spracúvané v súlade s nariadením GDPR na účely likvidácie poistnej udalosti.
+Dátum a podpis poistníka:
+Poisťovňa Demo, a.s., Príkladná 12, 811 01 Bratislava · IČO: 12345678 · zapísaná v OR OS Bratislava I, odd. Sa, vl. 999/B · infolinka 0850 123 456 · www.demo-poistovna.sk

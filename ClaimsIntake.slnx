@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ClaimsIntake.Core/ClaimsIntake.Core.csproj" />
+  <Project Path="ClaimsIntake.Evals/ClaimsIntake.Evals.csproj" />
+  <Project Path="ClaimsIntake.Web.csproj" />
+</Solution>

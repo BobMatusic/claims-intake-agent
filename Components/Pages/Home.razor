@@ -1,0 +1,470 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ClientModel
+@using System.Diagnostics
+@using System.Text
+@using ClaimsIntake.Core
+@using ClaimsIntake.Core.Agents
+@using ClaimsIntake.Core.Models
+@using ClaimsIntake.Core.Policies
+@using Microsoft.FeatureManagement
+@inject AzureDocumentIntelligence DocIntel
+@inject ClaimsAgent Agent
+@inject IFeatureManager FeatureManager
+@inject IJSRuntime JS
+
+<PageTitle>Nahlásenie poistnej udalosti</PageTitle>
+
+<div class="container py-4" style="max-width: 720px;">
+    <h1 class="mb-1">Nahlásenie poistnej udalosti</h1>
+    <p class="text-muted mb-4">Nahraj hlásenie a prípadné faktúry (max 3 súborov, max 5 MB na súbor).</p>
+    <p class="text-muted small">Agent: @(agentEnabled ? "zapnutý" : "vypnutý")</p>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <label class="form-label fw-semibold">Súbory</label>
+            <InputFile OnChange="OnFilesSelected" accept="image/*,application/pdf" multiple class="form-control" />
+            <div class="form-text">Povolené: JPG, PNG, PDF (max 5 MB na súbor, max 3 súborov).</div>
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert alert-danger mt-3 mb-0">@error</div>
+            }
+
+            @if (uploadedFiles.Count > 0)
+            {
+                <table class="table table-sm mt-3 mb-0">
+                    <thead>
+                        <tr>
+                            <th>Súbor</th>
+                            <th>Veľkosť</th>
+                            <th>Typ</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in uploadedFiles)
+                        {
+                            <tr>
+                                <td>@file.FileName</td>
+                                <td class="text-muted">@(file.Content.Length / 1024) KB</td>
+                                <td>
+                                    <select class="form-select form-select-sm" style="width: auto;"
+                                            value="@file.Type"
+                                            @onchange="e => file.Type = Enum.Parse<DocumentType>((string)e.Value!)">
+                                        <option value="@DocumentType.ClaimReport">Hlásenie</option>
+                                        <option value="@DocumentType.Invoice">Faktúra</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFile(file)">✕</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="mt-3 d-flex justify-content-end">
+                    <button class="btn btn-primary" @onclick="ProcessAsync" disabled="@isProcessing">
+                        @(isProcessing ? "Spracúvam..." : "Spracovať")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (isProcessing && !approvalPending)
+    {
+        <div class="alert alert-info">Agent analyzuje @uploadedFiles.Count dokument(y)...</div>
+    }
+
+    @if (approvalPending && pendingRequest is not null)
+    {
+        <div class="card border-warning shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Vyžaduje sa schválenie</h5>
+
+                <table class="table table-sm table-borderless mb-2" style="max-width: 360px;">
+                    <tbody>
+                        <tr><td class="text-muted">Zmluva</td><td><code>@pendingRequest.ContractNumber</code></td></tr>
+                        <tr><td class="text-muted">Dátum udalosti</td><td>@(pendingRequest.IncidentDate?.ToString("d.M.yyyy") ?? "—")</td></tr>
+                        <tr><td class="text-muted">Faktúry spolu</td><td>@pendingRequest.InvoiceTotal.ToString("N2") €</td></tr>
+                        <tr><td class="text-muted">Spoluúčasť</td><td>− @pendingRequest.Deductible.ToString("N2") €</td></tr>
+                        <tr><td class="text-muted">Limit zmluvy</td><td>@pendingRequest.Limit.ToString("N2") €</td></tr>
+                        <tr><td class="fw-semibold">Navrhované plnenie</td><td class="fw-semibold">@pendingRequest.Payout.ToString("N2") €</td></tr>
+                    </tbody>
+                </table>
+
+                @if (pendingRequest.Exclusions.Count > 0)
+                {
+                    <p class="fw-semibold mb-1 text-warning">Nájdené výluky z podmienok:</p>
+                    @foreach (var ex in pendingRequest.Exclusions)
+                    {
+                        <div class="card border-warning mb-2">
+                            <div class="card-body py-2 px-3">
+                                <strong>[@ex.ParagraphNumber] @ex.ArticleTitle</strong>
+                                <p class="mb-1 small">@ex.Reasoning</p>
+                                <blockquote class="small text-muted mb-1 ps-2 border-start border-2">@ex.EvidenceFromClaim</blockquote>
+                                <p class="small mt-1 mb-0 fst-italic">@ex.Text</p>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (pendingRequest.SoftSignals.Count > 0)
+                {
+                    <p class="fw-semibold mb-1">Signály (@pendingRequest.SoftSignals.Count):</p>
+                    <ul class="text-warning mb-3">
+                        @foreach (var signal in pendingRequest.SoftSignals)
+                        {
+                            <li>@signal</li>
+                        }
+                    </ul>
+                }
+
+                <button class="btn btn-success me-2" @onclick="() => Resolve(true)">Schváliť</button>
+                <button class="btn btn-outline-danger" @onclick="() => Resolve(false)">Zamietnuť</button>
+            </div>
+        </div>
+    }
+
+    @if (analysisResult is not null)
+    {
+        var d = analysisResult.Decision;
+        var borderClass = analysisResult.Outcome switch
+        {
+            ClaimOutcome.AutoApproved or ClaimOutcome.Approved => "border-success",
+            ClaimOutcome.Rejected => "border-danger",
+            ClaimOutcome.Escalated or ClaimOutcome.RequiresApproval => "border-warning",
+            _ => ""
+        };
+        var titleClass = analysisResult.Outcome switch
+        {
+            ClaimOutcome.AutoApproved or ClaimOutcome.Approved => "text-success",
+            ClaimOutcome.Rejected => "text-danger",
+            ClaimOutcome.Escalated or ClaimOutcome.RequiresApproval => "text-warning",
+            _ => ""
+        };
+        var title = analysisResult.Outcome switch
+        {
+            ClaimOutcome.AutoApproved => "Nárok automaticky schválený",
+            ClaimOutcome.Approved => "Nárok schválený",
+            ClaimOutcome.Rejected => "Nárok zamietnutý",
+            ClaimOutcome.Escalated => "Nárok eskalovaný",
+            _ => "Výsledok"
+        };
+
+        <div class="card shadow-sm @borderClass">
+            <div class="card-body">
+                <h5 class="card-title @titleClass">@title</h5>
+
+                @if (analysisResult.EscalationCaseId is not null)
+                {
+                    <p class="text-muted small">Eskalačný spis: <code>@analysisResult.EscalationCaseId</code></p>
+                }
+                @if (analysisResult.ClaimId is not null)
+                {
+                    <p class="text-muted small">Nárok: <code>@analysisResult.ClaimId</code></p>
+                }
+
+                @if (d.Payout > 0 || d.InvoiceTotal > 0)
+                {
+                    <table class="table table-sm table-borderless mb-2" style="max-width: 360px;">
+                        <tbody>
+                            <tr><td class="text-muted">Faktúry spolu</td><td>@d.InvoiceTotal.ToString("N2") €</td></tr>
+                            <tr><td class="text-muted">Spoluúčasť</td><td>− @d.Deductible.ToString("N2") €</td></tr>
+                            <tr><td class="text-muted">Limit zmluvy</td><td>@d.Limit.ToString("N2") €</td></tr>
+                            <tr><td class="fw-semibold">Navrhované plnenie</td><td class="fw-semibold">@d.Payout.ToString("N2") €</td></tr>
+                        </tbody>
+                    </table>
+                }
+
+                @if (d.HardBlocks.Count > 0)
+                {
+                    <p class="fw-semibold mb-1 text-danger">Blokujúce problémy:</p>
+                    <ul class="text-danger">
+                        @foreach (var block in d.HardBlocks)
+                        {
+                            <li>@block</li>
+                        }
+                    </ul>
+                }
+                @if (d.Exclusions.Count > 0)
+                {
+                    <p class="fw-semibold mb-1 text-warning">Nájdené výluky z podmienok:</p>
+                    @foreach (var ex in d.Exclusions)
+                    {
+                        <div class="card border-warning mb-2">
+                            <div class="card-body py-2 px-3">
+                                <strong>[@ex.ParagraphNumber] @ex.ArticleTitle</strong>
+                                <p class="mb-1 small">@ex.Reasoning</p>
+                                <blockquote class="small text-muted mb-1 ps-2 border-start border-2">@ex.EvidenceFromClaim</blockquote>
+                                <p class="small mt-1 mb-0 fst-italic">@ex.Text</p>
+                            </div>
+                        </div>
+                    }
+                }
+                @if (d.SoftSignals.Count > 0)
+                {
+                    <p class="fw-semibold mb-1 text-warning">Signály na preverenie:</p>
+                    <ul class="text-warning">
+                        @foreach (var signal in d.SoftSignals)
+                        {
+                            <li>@signal</li>
+                        }
+                    </ul>
+                }
+
+                @if (!string.IsNullOrEmpty(analysisResult.Summary))
+                {
+                    <hr />
+                    <pre class="mb-0" style="white-space: pre-wrap;">@analysisResult.Summary</pre>
+                }
+
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="DownloadSummaryAsync">
+                        Stiahnuť zhrnutie (.md)
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<UploadedDocument> uploadedFiles = [];
+    private string? error;
+    private bool agentEnabled;
+    private static readonly ActivitySource ActivitySource = new("ClaimsIntake");
+
+    protected override async Task OnInitializedAsync()
+    {
+        agentEnabled = await FeatureManager.IsEnabledAsync("AgentEnabled");
+    }
+
+    private bool isProcessing;
+    private bool approvalPending;
+    private ApprovalRequest? pendingRequest;
+    private ClaimAnalysisResult? analysisResult;
+    private TaskCompletionSource<bool>? approvalTcs;
+
+    private const long MaxFileSize = 5 * 1024 * 1024;
+    private const int MaxFiles = 3;
+
+    private static readonly string[] AllowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        error = null;
+        analysisResult = null;
+
+        var files = e.GetMultipleFiles(MaxFiles + uploadedFiles.Count);
+
+        if (uploadedFiles.Count + files.Count > MaxFiles)
+        {
+            error = $"Maximálny počet súborov je {MaxFiles}.";
+            return;
+        }
+
+        foreach (var file in files)
+        {
+            if (!AllowedTypes.Contains(file.ContentType))
+            {
+                error = $"Súbor {file.Name}: povolené sú len JPG, PNG alebo PDF.";
+                return;
+            }
+            if (file.Size > MaxFileSize)
+            {
+                error = $"Súbor {file.Name} je príliš veľký (max 5 MB).";
+                return;
+            }
+
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(MaxFileSize).CopyToAsync(ms);
+
+            var docType = uploadedFiles.Any(f => f.Type == DocumentType.ClaimReport)
+                ? DocumentType.Invoice
+                : DocumentType.ClaimReport;
+
+            uploadedFiles.Add(new UploadedDocument
+            {
+                FileName = file.Name,
+                Content = ms.ToArray(),
+                Type = docType
+            });
+        }
+    }
+
+    private void RemoveFile(UploadedDocument file) => uploadedFiles.Remove(file);
+
+    private async Task ProcessAsync()
+    {
+        if (!await FeatureManager.IsEnabledAsync("AgentEnabled"))
+        {
+            error = "Automatické spracovanie je dočasne nedostupné. "
+                  + "Udalosť bola zaevidovaná na manuálne spracovanie.";
+            return;
+        }
+
+        if (uploadedFiles.Count == 0) return;
+
+        var reportCount = uploadedFiles.Count(f => f.Type == DocumentType.ClaimReport);
+        var invoiceCount = uploadedFiles.Count(f => f.Type == DocumentType.Invoice);
+
+        if (reportCount != 1)
+        {
+            error = "Musí byť práve jedno hlásenie.";
+            return;
+        }
+
+        if (invoiceCount < 1)
+        {
+            error = "Musí byť aspoň jedna faktúra.";
+            return;
+        }
+
+        using var activity = ActivitySource.StartActivity("claim.process");
+        activity?.SetTag("claim.file_count", uploadedFiles.Count);
+
+        isProcessing = true;
+        analysisResult = null;
+        error = null;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var extractionTasks = uploadedFiles.Select(async doc =>
+            {
+                var result = await DocIntel.AnalyzeAsync(doc.Content);
+                doc.ExtractedText = result.FullText;
+            });
+            await Task.WhenAll(extractionTasks);
+
+            analysisResult = await Agent.AnalyzeClaimAsync(uploadedFiles, RequestApprovalAsync);
+        }
+        catch (ClientResultException ex) when (ex.Status == 400 && ex.Message.Contains("content_filter"))
+        {
+            error = "Dokument bol zamietnutý bezpečnostnou kontrolou a nebol spracovaný. "
+                  + "Prosím skontrolujte jeho obsah alebo kontaktujte podporu.";
+            Console.WriteLine($"[ClaimsIntake SECURITY] Content filter triggered: {ex}");
+        }
+        catch (Exception ex)
+        {
+            error = $"Spracovanie zlyhalo: {ex.Message}";
+            Console.WriteLine($"[ClaimsIntake ERROR] {ex}");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task<bool> RequestApprovalAsync(ApprovalRequest request)
+    {
+        pendingRequest = request;
+        approvalPending = true;
+        approvalTcs = new TaskCompletionSource<bool>();
+        await InvokeAsync(StateHasChanged);
+        return await approvalTcs.Task;
+    }
+
+    private void Resolve(bool approved)
+    {
+        approvalPending = false;
+        pendingRequest = null;
+        approvalTcs?.SetResult(approved);
+    }
+
+    private async Task DownloadSummaryAsync()
+    {
+        if (analysisResult is null) return;
+
+        var md = BuildSummaryMarkdown(analysisResult);
+        var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(md));
+        var fileId = analysisResult.ClaimId ?? analysisResult.EscalationCaseId ?? "spis";
+        await JS.InvokeVoidAsync("downloadFileFromBytes", $"zhrnutie_{fileId}.md", base64);
+    }
+
+    private static string BuildSummaryMarkdown(ClaimAnalysisResult result)
+    {
+        var d = result.Decision;
+        var sb = new StringBuilder();
+
+        sb.AppendLine("# Zhrnutie poistného spisu");
+        sb.AppendLine();
+        sb.AppendLine($"**Zmluva:** {result.CaseFile.Report.ContractNumber}");
+        sb.AppendLine($"**Poistník:** {result.CaseFile.Report.PolicyHolder}");
+        sb.AppendLine($"**Dátum udalosti:** {result.CaseFile.Report.IncidentDate?.ToString("d.M.yyyy") ?? "—"}");
+
+        var outcomeText = result.Outcome switch
+        {
+            ClaimOutcome.AutoApproved => "Automaticky schválený",
+            ClaimOutcome.Approved => "Schválený operátorom",
+            ClaimOutcome.Rejected => "Zamietnutý operátorom",
+            ClaimOutcome.Escalated => "Eskalovaný",
+            _ => result.Outcome.ToString()
+        };
+        sb.AppendLine($"**Výsledok:** {outcomeText}");
+
+        if (result.ClaimId is not null)
+            sb.AppendLine($"**Nárok:** {result.ClaimId}");
+        if (result.EscalationCaseId is not null)
+            sb.AppendLine($"**Eskalačný spis:** {result.EscalationCaseId}");
+
+        sb.AppendLine();
+        sb.AppendLine("## Návrh plnenia");
+        sb.AppendLine();
+        sb.AppendLine($"| | |");
+        sb.AppendLine($"|---|---:|");
+        sb.AppendLine($"| Faktúry spolu | {d.InvoiceTotal:N2} € |");
+        sb.AppendLine($"| Limit zmluvy | {d.Limit:N2} € |");
+        sb.AppendLine($"| Spoluúčasť | − {d.Deductible:N2} € |");
+        sb.AppendLine($"| **Navrhované plnenie** | **{d.Payout:N2} €** |");
+
+        if (d.HardBlocks.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Blokujúce problémy");
+            sb.AppendLine();
+            foreach (var block in d.HardBlocks)
+                sb.AppendLine($"- {block}");
+        }
+
+        if (d.Exclusions.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Nájdené výluky z podmienok");
+            sb.AppendLine();
+            foreach (var ex in d.Exclusions)
+            {
+                sb.AppendLine($"### [{ex.ParagraphNumber}] {ex.ArticleTitle}");
+                sb.AppendLine();
+                sb.AppendLine(ex.Reasoning);
+                sb.AppendLine();
+                sb.Append("**Dokaz z hlasenia:** ").Append(ex.EvidenceFromClaim).AppendLine();
+                sb.AppendLine();
+                sb.AppendLine($"> {ex.Text}");
+                sb.AppendLine();
+            }
+        }
+
+        if (d.SoftSignals.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Signály na preverenie");
+            sb.AppendLine();
+            foreach (var signal in d.SoftSignals)
+                sb.AppendLine($"- {signal}");
+        }
+
+        if (!string.IsNullOrEmpty(result.Summary))
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Zhrnutie");
+            sb.AppendLine();
+            sb.AppendLine(result.Summary);
+        }
+
+        return sb.ToString();
+    }
+}
