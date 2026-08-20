@@ -8,7 +8,7 @@ COPY ["ClaimsIntake.Web.csproj", "./"]
 COPY ["ClaimsIntake.Core/ClaimsIntake.Core.csproj", "ClaimsIntake.Core/"]
 RUN dotnet restore "ClaimsIntake.Web.csproj"
 COPY . .
-RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "ClaimsIntake.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
