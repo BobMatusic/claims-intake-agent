@@ -29,7 +29,6 @@ public record ClaimsHistory
 {
     public required string ContractNumber { get; init; }
     public int ClaimsInLastYear { get; init; }
-    public decimal TotalPayoutsLastYear { get; init; }
     public IReadOnlyList<DateOnly> ClaimDates { get; init; } = [];
 
     public bool HasClaimOn(DateOnly date) => ClaimDates.Contains(date);

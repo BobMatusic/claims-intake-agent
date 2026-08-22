@@ -11,21 +11,18 @@ public class ClaimsAgent
     private static readonly ActivitySource ActivitySource = new("ClaimsIntake");
 
     private readonly CaseFileExtractor _extractor;
-    private readonly PolicyService _policyService;
-    private readonly DecisionEngine _decisionEngine;
+    private readonly ClaimEvaluator _evaluator;
     private readonly ExclusionChecker _exclusionChecker;
     private readonly AdjusterSummaryWriter _summaryWriter;
 
     public ClaimsAgent(
         CaseFileExtractor extractor,
-        PolicyService policyService,
-        DecisionEngine decisionEngine,
+        ClaimEvaluator evaluator,
         ExclusionChecker exclusionChecker,
         AdjusterSummaryWriter summaryWriter)
     {
         _extractor = extractor;
-        _policyService = policyService;
-        _decisionEngine = decisionEngine;
+        _evaluator = evaluator;
         _exclusionChecker = exclusionChecker;
         _summaryWriter = summaryWriter;
     }
@@ -54,20 +51,11 @@ public class ClaimsAgent
                 HardBlocks = ["V spise chýba hlásenie poistnej udalosti."],
                 SoftSignals = []
             };
+            SetFinalTags(activity, emptyDecision, caseFile, 0);
             return await BuildEscalationResultAsync(caseFile, emptyDecision, ct);
         }
 
-        ClaimDecision decision;
-        using (var checksActivity = ActivitySource.StartActivity("claim.checks"))
-        {
-            var policy = _policyService.VerifyPolicy(caseFile.Report.ContractNumber, caseFile.Report.IncidentDate);
-            var history = _policyService.GetClaimsHistory(caseFile.Report.ContractNumber);
-            decision = _decisionEngine.Evaluate(caseFile, policy, history);
-
-            checksActivity?.SetTag("claim.hard_block_count", decision.HardBlocks.Count);
-            checksActivity?.SetTag("claim.soft_signal_count", decision.SoftSignals.Count);
-            checksActivity?.SetTag("claim.payout", decision.Payout);
-        }
+        var decision = _evaluator.Evaluate(caseFile);
 
         if (decision.Outcome != ClaimOutcome.Escalated)
         {
@@ -95,10 +83,8 @@ public class ClaimsAgent
             }
         }
 
-        using (var decisionActivity = ActivitySource.StartActivity("claim.decision"))
-        {
-            decisionActivity?.SetTag("claim.outcome", decision.Outcome.ToString());
-        }
+        var exclusionCount = decision.Exclusions.Count;
+        SetFinalTags(activity, decision, caseFile, exclusionCount);
 
         if (decision.Outcome == ClaimOutcome.Escalated)
             return await BuildEscalationResultAsync(caseFile, decision, ct);
@@ -155,7 +141,6 @@ public class ClaimsAgent
                 SoftSignals = decision.SoftSignals,
                 Exclusions = decision.Exclusions
             });
-            approvalActivity?.SetTag("claim.approved", approved);
         }
 
         return new ClaimAnalysisResult
@@ -168,6 +153,16 @@ public class ClaimsAgent
                 : "Nárok bol zamietnutý operátorom. Zákazník bude informovaný.",
             ClaimId = approved ? Guid.NewGuid().ToString() : null
         };
+    }
+
+    private static void SetFinalTags(Activity? activity, ClaimDecision decision, CaseFile caseFile, int exclusionCount)
+    {
+        activity?.SetTag("claim.outcome", decision.Outcome.ToString());
+        activity?.SetTag("claim.payout", decision.Payout);
+        activity?.SetTag("claim.hard_blocks", decision.HardBlocks.Count);
+        activity?.SetTag("claim.soft_signals", decision.SoftSignals.Count);
+        activity?.SetTag("claim.exclusions_found", exclusionCount);
+        activity?.SetTag("claim.invoice_count", caseFile.Invoices.Count);
     }
 
     private static bool IsReportEmpty(ClaimReport report)

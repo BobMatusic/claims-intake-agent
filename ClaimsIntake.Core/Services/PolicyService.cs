@@ -27,8 +27,7 @@ public class PolicyService
         return new ClaimsHistory
         {
             ContractNumber = contractNumber ?? string.Empty,
-            ClaimsInLastYear = 0,
-            TotalPayoutsLastYear = 0m
+            ClaimsInLastYear = 0
         };
     }
 }

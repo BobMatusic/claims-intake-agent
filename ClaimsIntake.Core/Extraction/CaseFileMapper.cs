@@ -32,7 +32,6 @@ public static class CaseFileMapper
         ContractNumber = r.ContractNumber?.Trim(),
         PolicyHolder = r.PolicyHolder?.Trim(),
         IncidentDate = TryParseDate(r.IncidentDateRaw),
-        IncidentDateRaw = r.IncidentDateRaw?.Trim(),
         IncidentDescription = r.IncidentDescription?.Trim(),
         VehicleRegistration = NormalizePlate(r.VehicleRegistration),
         ClaimType = r.ClaimType?.Trim().ToUpperInvariant(),
@@ -42,12 +41,9 @@ public static class CaseFileMapper
     private static Invoice MapInvoice(InvoiceExtraction inv) => new()
     {
         InvoiceNumber = inv.InvoiceNumber?.Trim(),
-        Supplier = inv.Supplier?.Trim(),
         IssueDate = TryParseDate(inv.IssueDateRaw),
-        IssueDateRaw = inv.IssueDateRaw?.Trim(),
         Amount = inv.Amount,
-        VehicleRegistration = NormalizePlate(inv.VehicleRegistration),
-        WorkDescription = inv.WorkDescription?.Trim()
+        VehicleRegistration = NormalizePlate(inv.VehicleRegistration)
     };
 
     public static DateOnly? TryParseDate(string? raw)

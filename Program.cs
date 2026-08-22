@@ -50,6 +50,7 @@ builder.Services.AddSingleton<ExclusionChecker>();
 builder.Services.AddSingleton<AdjusterSummaryWriter>();
 builder.Services.AddSingleton<PolicyService>();
 builder.Services.AddSingleton<DecisionEngine>();
+builder.Services.AddSingleton<ClaimEvaluator>();
 builder.Services.AddSingleton<ClaimsAgent>();
 
 builder.Configuration.AddAzureAppConfiguration(options =>

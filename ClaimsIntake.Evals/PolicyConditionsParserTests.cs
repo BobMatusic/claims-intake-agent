@@ -5,7 +5,7 @@ namespace ClaimsIntake.Evals;
 public class PolicyConditionsParserTests
 {
     private static readonly IReadOnlyList<PolicyChunk> Chunks =
-        PolicyConditionsParser.Parse(File.ReadAllText(Path.Combine("fixtures", "vpp-kasko.md")));
+        PolicyConditionsParser.Parse(File.ReadAllText(Path.Combine("TestData", "vpp-kasko.md")));
 
     [Fact]
     public void Article_7_has_14_paragraphs()

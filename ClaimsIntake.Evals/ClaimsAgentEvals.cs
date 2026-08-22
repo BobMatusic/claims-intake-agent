@@ -48,7 +48,8 @@ public class ClaimsAgentEvals
         var indexer = new PolicyConditionsIndexer(CreateEmbeddingGenerator());
         var search = new PolicyConditionsSearch(indexer);
         var exclusionChecker = new ExclusionChecker(chatClient, search, indexer);
-        return new(extractor, new PolicyService(), new DecisionEngine(), exclusionChecker, new AdjusterSummaryWriter(chatClient));
+        var evaluator = new ClaimEvaluator(new PolicyService(), new DecisionEngine());
+        return new(extractor, evaluator, exclusionChecker, new AdjusterSummaryWriter(chatClient));
     }
 
     [Theory]
@@ -116,7 +117,7 @@ public class ClaimsAgentEvals
     }
 
     private static string LoadFixture(string name)
-        => File.ReadAllText(Path.Combine("fixtures", name));
+        => File.ReadAllText(Path.Combine("TestData", name));
 
     private static List<UploadedDocument> LoadClaimReport(string name)
         => [new UploadedDocument
@@ -134,6 +135,5 @@ public class ClaimsAgentEvals
             Text = LoadFixture(name)
         }];
 
-    private static Task<bool> AutoApprove(ApprovalRequest _) => Task.FromResult(true);
     private static Task<bool> AutoReject(ApprovalRequest _) => Task.FromResult(false);
 }
