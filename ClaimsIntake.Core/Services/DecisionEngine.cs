@@ -33,9 +33,6 @@ public class DecisionEngine
         if (!policy.CoversClaimType(caseFile.Report.ClaimType))
             hardBlocks.Add($"Produkt zmluvy nekryje typ škody {caseFile.Report.ClaimType}.");
 
-        if (hardBlocks.Count > 0)
-            return Escalate(hardBlocks);
-
         if (string.IsNullOrWhiteSpace(caseFile.Report.PolicyHolder))
             softSignals.Add("V hlásení chýba meno poistníka.");
 
@@ -69,45 +66,38 @@ public class DecisionEngine
 
         var invoiceTotal = caseFile.Invoices.Where(i => i.Amount.HasValue).Sum(i => i.Amount!.Value);
 
-        if (invoiceTotal > policy.Limit)
-            softSignals.Add($"Súčet faktúr {invoiceTotal:N2} € presahuje limit zmluvy {policy.Limit:N2} €.");
+        if (policy.IsActive)
+        {
+            if (invoiceTotal > policy.Limit)
+                softSignals.Add($"Súčet faktúr {invoiceTotal:N2} € presahuje limit zmluvy {policy.Limit:N2} €.");
 
-        var recentClaims = history.CountWithinMonths(12);
-        if (recentClaims >= 3)
-            softSignals.Add($"Na zmluve je {recentClaims} nárokov za posledných 12 mesiacov.");
+            var recentClaims = history.CountWithinMonths(12);
+            if (recentClaims >= 3)
+                softSignals.Add($"Na zmluve je {recentClaims} nárokov za posledných 12 mesiacov.");
+        }
 
-        var payout = Math.Max(0m, Math.Min(invoiceTotal, policy.Limit) - policy.Deductible);
+        var limit = policy.IsActive ? policy.Limit : 0m;
+        var deductible = policy.IsActive ? policy.Deductible : 0m;
+        var payout = policy.IsActive
+            ? Math.Max(0m, Math.Min(invoiceTotal, limit) - deductible)
+            : 0m;
 
-        if (payout > HighAmountThreshold)
+        if (policy.IsActive && payout > HighAmountThreshold)
             softSignals.Add($"Navrhované plnenie {payout:N2} € presahuje hranicu pre automatické schválenie.");
 
-        var outcome = softSignals.Count == 0
-            ? ClaimOutcome.AutoApproved
-            : ClaimOutcome.RequiresApproval;
+        var outcome = (hardBlocks.Count > 0 || softSignals.Count > 0)
+            ? ClaimOutcome.RequiresApproval
+            : ClaimOutcome.AutoApproved;
 
         return new ClaimDecision
         {
             Outcome = outcome,
             Payout = payout,
             InvoiceTotal = invoiceTotal,
-            Deductible = policy.Deductible,
-            Limit = policy.Limit,
-            HardBlocks = [],
-            SoftSignals = softSignals
-        };
-    }
-
-    private static ClaimDecision Escalate(List<string> hardBlocks)
-    {
-        return new ClaimDecision
-        {
-            Outcome = ClaimOutcome.Escalated,
-            Payout = 0m,
-            InvoiceTotal = 0m,
-            Deductible = 0m,
-            Limit = 0m,
+            Deductible = deductible,
+            Limit = limit,
             HardBlocks = hardBlocks,
-            SoftSignals = []
+            SoftSignals = softSignals
         };
     }
 }

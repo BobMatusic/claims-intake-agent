@@ -1,0 +1,155 @@
+@page "/future-plans"
+
+<PageTitle>Future Plans</PageTitle>
+
+<div class="container py-4" style="max-width: 720px;">
+    <h1 class="mb-4">Future Plans</h1>
+
+    <div class="card shadow-sm mb-4 border-success">
+        <div class="card-body">
+            <h4 class="card-title text-success">Phase 2 — MCP Tool Server</h4>
+            <p class="text-muted mb-3">Model Context Protocol &middot; Tool discovery &middot; Role-based access control</p>
+
+            <p>
+                Extract all agent tools into a standalone <strong>MCP server</strong>
+                using the official <code>ModelContextProtocol</code> C# SDK.
+                The Blazor application becomes an MCP client that discovers and invokes
+                tools over HTTP+SSE instead of calling them in-process.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Server — Tool Registration</h6>
+            <p>
+                A new <code>ClaimsIntake.McpServer</code> ASP.NET project hosts the existing
+                tool methods (<code>GetPolicyDetail</code>, <code>GetClaimsHistory</code>,
+                <code>GetClaimDetail</code>, <code>FindClaimsByVehicle</code>,
+                <code>SearchPolicyConditions</code>) decorated with <code>[McpServerTool]</code>.
+                The SDK handles <code>tools/list</code> discovery and <code>tools/call</code>
+                execution automatically. DI setup mirrors the current Core project —
+                <code>PolicyService</code>, <code>PolicyConditionsSearch</code>,
+                and the embedding generator are registered the same way.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Server — Role-Based Tool Filtering</h6>
+            <p>
+                Each API key maps to a role (e.g. <code>analyst</code>, <code>admin</code>)
+                configured in <code>appsettings.json</code>. Middleware reads the
+                <code>x-api-key</code> header, resolves the role, and filters the
+                <code>tools/list</code> response to only the tools that role is allowed to use.
+                A <code>tools/call</code> request for a tool outside the role's allow-list
+                returns 403. This ensures enforcement at the server boundary, not just
+                in client code.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Client — ClaimAssistantFactory</h6>
+            <p>
+                <code>ClaimAssistantFactory</code> connects to the MCP server as a client,
+                sends the appropriate API key for the agent's role, and receives only the
+                permitted tools via discovery. It then passes them to <code>ChatClientAgent</code>
+                exactly as before. A client-side allow-list provides a second layer of filtering
+                (defense in depth) — even if the server misconfigures a role, the client
+                will not hand an unexpected tool to the agent.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Testing &amp; Interoperability</h6>
+            <p class="mb-0">
+                The MCP server can be tested independently using MCP Inspector (a debug UI)
+                or by adding it to Claude Desktop's <code>claude_desktop_config.json</code>.
+                This proves that the same tools are consumable by any MCP-compatible client,
+                not just the Blazor application.
+            </p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-body">
+            <h4 class="card-title text-primary">Phase 3 — Multi-Agent Orchestration</h4>
+            <p class="text-muted mb-3">Microsoft Agent Framework &middot; Visual verification &middot; Damage classification</p>
+
+            <p>
+                Upgrade the current single-agent pipeline to a <strong>multi-agent architecture</strong>
+                using the Microsoft Agent Framework.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Photo Verification Agent</h6>
+            <p>
+                A dedicated agent whose sole responsibility is to verify uploaded photos against the claim report.
+                It answers two questions:
+            </p>
+            <ul>
+                <li>
+                    <strong>Consistency check</strong> — do the photos match what the report describes?
+                    If the report says "front bumper damage" but the photos show a scratched door,
+                    the agent flags the discrepancy as a signal for the adjuster.
+                </li>
+                <li>
+                    <strong>Damage classification</strong> — the model identifies which parts are damaged,
+                    the extent of damage (surface scratch vs. structural deformation), and whether
+                    the damage is consistent with the reported incident type.
+                    Code then compares this classification against a reference table of part prices
+                    and labor rates to flag invoices that fall outside the expected range.
+                    The model answers "what do I see", not "how much should it cost" — the second
+                    question belongs to a lookup table.
+                </li>
+            </ul>
+
+            <h6 class="fw-semibold mt-3">Orchestration</h6>
+            <p>
+                A central orchestrator decides which agents to invoke and in what order.
+                For a standard claim, the investigation agent runs first; the photo agent runs
+                in parallel or on demand. The orchestrator merges their findings into a single
+                set of signals for the decision engine. This is more deterministic and easier
+                to trace than peer-to-peer handoffs between agents.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Key Constraint</h6>
+            <p class="mb-0">
+                Neither agent can approve or reject a claim. They produce findings with evidence;
+                the deterministic decision engine and the human adjuster remain the only decision-makers.
+            </p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-secondary">
+        <div class="card-body">
+            <h4 class="card-title text-secondary">Phase 4 — Fraud Pattern Detection</h4>
+            <p class="text-muted mb-3">Vector similarity &middot; Structural queries &middot; Evaluation on labeled data</p>
+
+            <p>
+                Build a long-term memory of processed claims to detect duplicates,
+                near-duplicates, and suspicious behavioral patterns at intake time.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Duplicate &amp; Near-Duplicate Detection</h6>
+            <p>
+                When a new claim arrives, its description and invoice details are embedded
+                and compared against all stored claims using cosine similarity.
+                If a highly similar claim has already been filed — same narrative, same repair shop,
+                same damage pattern — the system flags it before it reaches the adjuster.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Suspicious Pattern Recognition</h6>
+            <ul>
+                <li>Near-duplicate incident descriptions across different contracts</li>
+                <li>Clusters of suspiciously similar narratives originating from the same repair shop</li>
+                <li>Semantic overlap between claims filed under different policyholders for similar vehicles</li>
+            </ul>
+
+            <h6 class="fw-semibold mt-3">Evaluation</h6>
+            <p>
+                A false accusation is more expensive than a missed fraud case.
+                The detection layer is evaluated on historical cases with known outcomes,
+                tracking both precision and recall — not just catch rate.
+                The system never blocks a claim on its own; it surfaces findings as soft signals
+                in the existing decision engine for the adjuster to review.
+            </p>
+
+            <h6 class="fw-semibold mt-3">Data Residency &amp; Retention</h6>
+            <p class="mb-0">
+                Claim descriptions stored as embeddings are personal data under GDPR.
+                The vector store is hosted in an EU region with a defined retention period
+                aligned with the insurance contract lifecycle.
+                Embeddings are deleted when the retention window expires.
+            </p>
+        </div>
+    </div>
+</div>

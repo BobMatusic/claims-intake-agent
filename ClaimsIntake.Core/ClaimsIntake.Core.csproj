@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ClaimAssistantFactory.BuildTools is internal; ClaimAssistantFactoryTests pins the
+         assistant's tool set down so no mutating tool can be added unnoticed. -->
+    <InternalsVisibleTo Include="ClaimsIntake.Evals" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.15.0" />

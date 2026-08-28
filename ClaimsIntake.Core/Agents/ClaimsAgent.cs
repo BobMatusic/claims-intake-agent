@@ -29,7 +29,7 @@ public class ClaimsAgent
 
     public async Task<ClaimAnalysisResult> AnalyzeClaimAsync(
         IReadOnlyList<UploadedDocument> documents,
-        Func<ApprovalRequest, Task<bool>> approvalCallback,
+        Func<ApprovalRequest, CaseContext, Task<bool>> approvalCallback,
         CancellationToken ct = default)
     {
         using var activity = ActivitySource.StartActivity("claim.analyze");
@@ -57,37 +57,31 @@ public class ClaimsAgent
 
         var decision = _evaluator.Evaluate(caseFile);
 
-        if (decision.Outcome != ClaimOutcome.Escalated)
+        using var exclusionActivity = ActivitySource.StartActivity("claim.exclusion_check");
+        var reportText = documents
+            .First(d => d.Type == DocumentType.ClaimReport).ExtractedText ?? string.Empty;
+        var exclusions = await _exclusionChecker.CheckAsync(reportText, ct);
+        exclusionActivity?.SetTag("claim.exclusion_count", exclusions.Count);
+
+        if (exclusions.Count > 0)
         {
-            using var exclusionActivity = ActivitySource.StartActivity("claim.exclusion_check");
-            var reportText = documents
-                .First(d => d.Type == DocumentType.ClaimReport).ExtractedText ?? string.Empty;
-            var exclusions = await _exclusionChecker.CheckAsync(reportText, ct);
-            exclusionActivity?.SetTag("claim.exclusion_count", exclusions.Count);
+            var exclusionSignals = exclusions
+                .Select(e => $"Možná výluka [{e.ParagraphNumber}]: {e.Reasoning}")
+                .ToList();
 
-            if (exclusions.Count > 0)
+            var allSignals = decision.SoftSignals.Concat(exclusionSignals).ToList();
+            decision = decision with
             {
-                var exclusionSignals = exclusions
-                    .Select(e => $"Možná výluka [{e.ParagraphNumber}]: {e.Reasoning}")
-                    .ToList();
-
-                var allSignals = decision.SoftSignals.Concat(exclusionSignals).ToList();
-                decision = decision with
-                {
-                    SoftSignals = allSignals,
-                    Exclusions = exclusions,
-                    Outcome = allSignals.Count == 0
-                        ? ClaimOutcome.AutoApproved
-                        : ClaimOutcome.RequiresApproval
-                };
-            }
+                SoftSignals = allSignals,
+                Exclusions = exclusions,
+                Outcome = (decision.HardBlocks.Count > 0 || allSignals.Count > 0)
+                    ? ClaimOutcome.RequiresApproval
+                    : ClaimOutcome.AutoApproved
+            };
         }
 
         var exclusionCount = decision.Exclusions.Count;
         SetFinalTags(activity, decision, caseFile, exclusionCount);
-
-        if (decision.Outcome == ClaimOutcome.Escalated)
-            return await BuildEscalationResultAsync(caseFile, decision, ct);
 
         return await CreateClaimWithApprovalAsync(caseFile, decision, approvalCallback, ct);
     }
@@ -112,7 +106,7 @@ public class ClaimsAgent
     private async Task<ClaimAnalysisResult> CreateClaimWithApprovalAsync(
         CaseFile caseFile,
         ClaimDecision decision,
-        Func<ApprovalRequest, Task<bool>> approvalCallback,
+        Func<ApprovalRequest, CaseContext, Task<bool>> approvalCallback,
         CancellationToken ct)
     {
         if (decision.Outcome == ClaimOutcome.AutoApproved)
@@ -130,7 +124,7 @@ public class ClaimsAgent
         bool approved;
         using (var approvalActivity = ActivitySource.StartActivity("claim.await_approval"))
         {
-            approved = await approvalCallback(new ApprovalRequest
+            var request = new ApprovalRequest
             {
                 ContractNumber = caseFile.Report.ContractNumber,
                 IncidentDate = caseFile.Report.IncidentDate,
@@ -138,9 +132,12 @@ public class ClaimsAgent
                 InvoiceTotal = decision.InvoiceTotal,
                 Deductible = decision.Deductible,
                 Limit = decision.Limit,
+                HardBlocks = decision.HardBlocks,
                 SoftSignals = decision.SoftSignals,
                 Exclusions = decision.Exclusions
-            });
+            };
+            var context = CaseContext.FromCaseFile(caseFile, decision);
+            approved = await approvalCallback(request, context);
         }
 
         return new ClaimAnalysisResult

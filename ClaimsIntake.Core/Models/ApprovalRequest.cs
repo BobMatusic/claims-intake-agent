@@ -10,6 +10,7 @@ public record ApprovalRequest
     public required decimal InvoiceTotal { get; init; }
     public required decimal Deductible { get; init; }
     public required decimal Limit { get; init; }
+    public required IReadOnlyList<string> HardBlocks { get; init; }
     public required IReadOnlyList<string> SoftSignals { get; init; }
     public IReadOnlyList<ResolvedExclusion> Exclusions { get; init; } = [];
 }

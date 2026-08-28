@@ -66,7 +66,7 @@ public class DecisionEngineTests
     {
         var decision = Engine.Evaluate(MakeCase(), InactivePolicy, EmptyHistory);
 
-        Assert.Equal(ClaimOutcome.Escalated, decision.Outcome);
+        Assert.Equal(ClaimOutcome.RequiresApproval, decision.Outcome);
         Assert.Contains(decision.HardBlocks, b => b.Contains("aktívna", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -75,7 +75,7 @@ public class DecisionEngineTests
     {
         var decision = Engine.Evaluate(MakeCase(suspicious: true), ActivePolicy, EmptyHistory);
 
-        Assert.Equal(ClaimOutcome.Escalated, decision.Outcome);
+        Assert.Equal(ClaimOutcome.RequiresApproval, decision.Outcome);
         Assert.Contains(decision.HardBlocks, b => b.Contains("ovplyvniť", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -84,7 +84,7 @@ public class DecisionEngineTests
     {
         var decision = Engine.Evaluate(MakeCase(suspicious: true), InactivePolicy, EmptyHistory);
 
-        Assert.Equal(ClaimOutcome.Escalated, decision.Outcome);
+        Assert.Equal(ClaimOutcome.RequiresApproval, decision.Outcome);
         Assert.True(decision.HardBlocks.Count >= 2);
     }
 
@@ -99,7 +99,7 @@ public class DecisionEngineTests
 
         var decision = Engine.Evaluate(cf, ActivePolicy, EmptyHistory);
 
-        Assert.Equal(ClaimOutcome.Escalated, decision.Outcome);
+        Assert.Equal(ClaimOutcome.RequiresApproval, decision.Outcome);
         Assert.Contains(decision.HardBlocks, b => b.Contains("dátum", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -192,7 +192,7 @@ public class DecisionEngineTests
 
         var decision = Engine.Evaluate(MakeCase(incidentDate: claimDate), ActivePolicy, history);
 
-        Assert.Equal(ClaimOutcome.Escalated, decision.Outcome);
+        Assert.Equal(ClaimOutcome.RequiresApproval, decision.Outcome);
         Assert.Contains(decision.HardBlocks, b => b.Contains("evidovaný", StringComparison.OrdinalIgnoreCase));
     }
 

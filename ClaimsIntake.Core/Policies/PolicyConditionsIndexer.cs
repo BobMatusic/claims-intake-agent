@@ -34,7 +34,7 @@ public class PolicyConditionsIndexer
     public PolicyChunk? GetChunk(string paragraphNumber)
         => _chunks.FirstOrDefault(c => c.ParagraphNumber == paragraphNumber);
 
-    public async Task<IReadOnlyList<PolicyChunk>> SearchAsync(
+    public async Task<IReadOnlyList<ScoredChunk>> SearchAsync(
         string query,
         int topK = 5,
         int? articleNumber = null,
@@ -55,7 +55,7 @@ public class PolicyConditionsIndexer
         return scored
             .OrderByDescending(x => x.Score)
             .Take(topK)
-            .Select(x => _chunks[x.Index])
+            .Select(x => new ScoredChunk(_chunks[x.Index], x.Score))
             .ToList();
     }
 }

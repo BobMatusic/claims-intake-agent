@@ -1,0 +1,194 @@
+{
+  "policies": [
+    {
+      "contractNumber": "SK7788990011",
+      "policyHolder": "Ján Novák",
+      "status": "aktívna",
+      "coveredFrom": "2023-01-15",
+      "coveredUntil": "2028-01-14",
+      "product": "KASKO",
+      "coveredClaimTypes": [ "AUTO" ],
+      "limit": 8000,
+      "deductible": 100,
+      "vehicles": [
+        {
+          "registration": "NR-123AB",
+          "make": "Škoda",
+          "model": "Octavia III",
+          "year": 2015,
+          "vin": "TMBJ7NEOF0123456"
+        }
+      ]
+    },
+    {
+      "contractNumber": "SK1234567890",
+      "policyHolder": "Peter Kováč",
+      "status": "aktívna",
+      "coveredFrom": "2022-06-01",
+      "coveredUntil": "2027-05-31",
+      "product": "KASKO",
+      "coveredClaimTypes": [ "AUTO" ],
+      "limit": 15000,
+      "deductible": 150,
+      "vehicles": [
+        {
+          "registration": "ZA-789CD",
+          "make": "Volkswagen",
+          "model": "Golf VIII",
+          "year": 2021,
+          "vin": "WVWZZZ1KZXW012345"
+        }
+      ]
+    },
+    {
+      "contractNumber": "SK5566778899",
+      "policyHolder": "Alojz Fovák",
+      "status": "aktívna",
+      "coveredFrom": "2023-01-15",
+      "coveredUntil": "2028-01-14",
+      "product": "KASKO",
+      "coveredClaimTypes": [ "AUTO" ],
+      "limit": 5000,
+      "deductible": 200,
+      "vehicles": [
+        {
+          "registration": "NR-923AB",
+          "make": "Škoda",
+          "model": "Octavia III",
+          "year": 2016,
+          "vin": "TMBJ7NEOF0157456"
+        }
+      ]
+    },
+    {
+      "contractNumber": "SK9988776655",
+      "policyHolder": "Martin Trnava",
+      "status": "aktívna",
+      "coveredFrom": "2023-01-15",
+      "coveredUntil": "2028-01-14",
+      "product": "KASKO",
+      "coveredClaimTypes": [ "AUTO" ],
+      "limit": 9000,
+      "deductible": 30,
+      "vehicles": [
+        {
+          "registration": "TT-923AB",
+          "make": "Škoda",
+          "model": "Octavia II",
+          "year": 2014,
+          "vin": "TMBJ7NEOF0186456"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "claimId": "CLM-2025-00147",
+      "contractNumber": "SK7788990011",
+      "vehicleRegistration": "NR-123AB",
+      "incidentDate": "2025-03-15",
+      "claimType": "AUTO",
+      "description": "Škrabance na ľavom boku pri parkovaní v OC Mlyny Nitra",
+      "repairShop": "AutoServis Nitra s.r.o.",
+      "invoiceNumber": "AS-2025/0234",
+      "amount": 450,
+      "status": "vyplatený"
+    },
+    {
+      "claimId": "CLM-2024-00612",
+      "contractNumber": "SK7788990011",
+      "vehicleRegistration": "NR-123AB",
+      "incidentDate": "2024-08-22",
+      "claimType": "AUTO",
+      "description": "Prasknutie čelného skla kameňom na R1 smer Žiar nad Hronom",
+      "repairShop": "AutoSklo Nitra",
+      "invoiceNumber": "ASN-2024/0887",
+      "amount": 320,
+      "status": "vyplatený"
+    },
+    {
+      "claimId": "CLM-2025-00298",
+      "contractNumber": "SK1234567890",
+      "vehicleRegistration": "ZA-789CD",
+      "incidentDate": "2025-06-10",
+      "claimType": "AUTO",
+      "description": "Náraz do stĺpika pri cúvaní na parkovisku Kaufland Žilina",
+      "repairShop": "VW Servis Žilina s.r.o.",
+      "invoiceNumber": "VWZ-2025/0412",
+      "amount": 1250,
+      "status": "vyplatený"
+    },
+    {
+      "claimId": "CLM-2024-00893",
+      "contractNumber": "SK1234567890",
+      "vehicleRegistration": "ZA-789CD",
+      "incidentDate": "2024-11-08",
+      "claimType": "AUTO",
+      "description": "Poškodenie čelného skla kameňom na diaľnici D1",
+      "repairShop": "AutoSklo Žilina",
+      "invoiceNumber": "ASZ-2024/1102",
+      "amount": 280,
+      "status": "vyplatený"
+    },
+    {
+      "claimId": "CLM-2024-00341",
+      "contractNumber": "SK1234567890",
+      "vehicleRegistration": "ZA-789CD",
+      "incidentDate": "2024-04-19",
+      "claimType": "AUTO",
+      "description": "Poškriabanie pravých dverí neznámym páchateľom na sídlisku Vlčince",
+      "repairShop": "LakCenter Žilina",
+      "invoiceNumber": "LC-2024/0198",
+      "amount": 680,
+      "status": "vyplatený"
+    },
+    {
+      "claimId": "CLM-2025-00055",
+      "contractNumber": "SK5566778899",
+      "vehicleRegistration": "NR-923AB",
+      "incidentDate": "2025-01-28",
+      "claimType": "AUTO",
+      "description": "Zrazenie srnky na ceste II/513 pri obci Ludanice",
+      "repairShop": "AutoServis Topoľčany s.r.o.",
+      "invoiceNumber": "AST-2025/0067",
+      "amount": 2800,
+      "status": "v riešení"
+    },
+    {
+      "claimId": "CLM-2026-00401",
+      "contractNumber": "SK9988776655",
+      "vehicleRegistration": "TT-923AB",
+      "incidentDate": "2026-02-14",
+      "claimType": "AUTO",
+      "description": "Poškodenie predného nárazníka pri drobnej kolízii na kruhovom objazde v Trnave",
+      "repairShop": "Škoda Servis Trnava",
+      "invoiceNumber": "SST-2026/0088",
+      "amount": 920,
+      "status": "vyplatený"
+    },
+    {
+      "claimId": "CLM-2025-00789",
+      "contractNumber": "SK9988776655",
+      "vehicleRegistration": "TT-923AB",
+      "incidentDate": "2025-09-03",
+      "claimType": "AUTO",
+      "description": "Vytopenie interiéru počas prívalového dažďa — voda cez netesné tesnenie dverí",
+      "repairShop": "AutoElektro Trnava s.r.o.",
+      "invoiceNumber": "AET-2025/0543",
+      "amount": 1450,
+      "status": "zamietnutý"
+    },
+    {
+      "claimId": "CLM-2025-00512",
+      "contractNumber": "SK9988776655",
+      "vehicleRegistration": "TT-923AB",
+      "incidentDate": "2025-05-17",
+      "claimType": "AUTO",
+      "description": "Vandalizmus — poškriabaný lak na kapote a dverách, parkovisko pri železničnej stanici",
+      "repairShop": "LakCenter Trnava",
+      "invoiceNumber": "LCT-2025/0277",
+      "amount": 1100,
+      "status": "vyplatený"
+    }
+  ]
+}

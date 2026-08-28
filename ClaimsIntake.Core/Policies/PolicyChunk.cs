@@ -10,3 +10,5 @@ public record PolicyChunk
 
     public required string Text { get; init; }
 }
+
+public record ScoredChunk(PolicyChunk Chunk, float Score);

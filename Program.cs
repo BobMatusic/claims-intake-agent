@@ -4,7 +4,10 @@ using Azure.AI.OpenAI;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using ClaimsIntake.Core;
 using ClaimsIntake.Core.Agents;
+using ClaimsIntake.Core.Agents.Factory;
+using ClaimsIntake.Core.Agents.Interfaces;
 using ClaimsIntake.Core.Extraction;
+using ClaimsIntake.Core.Models;
 using ClaimsIntake.Core.Policies;
 using ClaimsIntake.Core.Services;
 using Microsoft.Extensions.AI;
@@ -32,7 +35,7 @@ builder.Services.AddSingleton<IChatClient>(sp =>
         .AsBuilder()
         .UseOpenTelemetry(
             sourceName: "ClaimsIntake.AI",
-            configure: c => c.EnableSensitiveData = builder.Environment.IsDevelopment())
+            configure: c => c.EnableSensitiveData = true)
         .Build());
 
 builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
@@ -48,9 +51,12 @@ builder.Services.AddSingleton<PolicyConditionsSearch>();
 builder.Services.AddSingleton<CaseFileExtractor>();
 builder.Services.AddSingleton<ExclusionChecker>();
 builder.Services.AddSingleton<AdjusterSummaryWriter>();
-builder.Services.AddSingleton<PolicyService>();
+var policyData = PolicyData.LoadFromFile(
+    Path.Combine(builder.Environment.ContentRootPath, "Content", "policies.json"));
+builder.Services.AddSingleton(new PolicyService(policyData));
 builder.Services.AddSingleton<DecisionEngine>();
 builder.Services.AddSingleton<ClaimEvaluator>();
+builder.Services.AddSingleton<IClaimAssistantFactory, ClaimAssistantFactory>();
 builder.Services.AddSingleton<ClaimsAgent>();
 
 builder.Configuration.AddAzureAppConfiguration(options =>
@@ -87,11 +93,9 @@ app.UseAzureAppConfiguration();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 

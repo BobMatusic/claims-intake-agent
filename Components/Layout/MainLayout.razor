@@ -21,3 +21,7 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+<div style="position: fixed; bottom: 8px; right: 12px; font-size: 0.7rem; color: #888; pointer-events: none;">
+    v@((typeof(MainLayout).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "dev").Split('+')[0])
+</div>

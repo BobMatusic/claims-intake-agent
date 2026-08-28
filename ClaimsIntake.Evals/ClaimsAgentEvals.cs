@@ -48,7 +48,8 @@ public class ClaimsAgentEvals
         var indexer = new PolicyConditionsIndexer(CreateEmbeddingGenerator());
         var search = new PolicyConditionsSearch(indexer);
         var exclusionChecker = new ExclusionChecker(chatClient, search, indexer);
-        var evaluator = new ClaimEvaluator(new PolicyService(), new DecisionEngine());
+        var policyData = PolicyData.LoadFromFile(Path.Combine("TestData", "policies.json"));
+        var evaluator = new ClaimEvaluator(new PolicyService(policyData), new DecisionEngine());
         return new(extractor, evaluator, exclusionChecker, new AdjusterSummaryWriter(chatClient));
     }
 
@@ -58,7 +59,7 @@ public class ClaimsAgentEvals
     {
         var extractor = CreateExtractor();
         var agent = CreateAgent(extractor);
-        var result = await agent.AnalyzeClaimAsync(LoadClaimReport(fixture), _ =>
+        var result = await agent.AnalyzeClaimAsync(LoadClaimReport(fixture), (_, _) =>
             Task.FromResult(false));
 
         Assert.Equal(ClaimOutcome.Rejected, result.Outcome);
@@ -113,7 +114,7 @@ public class ClaimsAgentEvals
 
         var result = await agent.AnalyzeClaimAsync(LoadClaimReport(fixture), AutoReject);
 
-        Assert.Equal(ClaimOutcome.Escalated, result.Outcome);
+        Assert.Equal(ClaimOutcome.Rejected, result.Outcome);
     }
 
     private static string LoadFixture(string name)
@@ -135,5 +136,5 @@ public class ClaimsAgentEvals
             Text = LoadFixture(name)
         }];
 
-    private static Task<bool> AutoReject(ApprovalRequest _) => Task.FromResult(false);
+    private static Task<bool> AutoReject(ApprovalRequest _, CaseContext __) => Task.FromResult(false);
 }

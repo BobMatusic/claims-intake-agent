@@ -123,14 +123,14 @@ while ((Get-Date) -lt $deadline) {
     $state = az containerapp revision show -n $app -g $rg --revision $revisionName `
         --query "properties.runningState" -o tsv 2>$null
 
-    if ($state -eq "Running") { break }
+    if ($state -eq "Running" -or $state -eq "RunningAtMaxScale") { break }
     if ($state -eq "Failed" -or $state -eq "ActivationFailed") { break }
 
     Write-Host "  state: $state -- waiting..." -ForegroundColor DarkGray
     Start-Sleep -Seconds 10
 }
 
-if ($state -ne "Running") {
+if ($state -ne "Running" -and $state -ne "RunningAtMaxScale") {
     Write-Host ""
     Write-Host "REVISION FAILED TO START (state: $state)." -ForegroundColor Red
     Write-Host "Previous version keeps running. Revision logs:" -ForegroundColor Yellow
