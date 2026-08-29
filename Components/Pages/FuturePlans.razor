@@ -1,4 +1,4 @@
-@page "/future-plans"
+﻿@page "/future-plans"
 
 <PageTitle>Future Plans</PageTitle>
 
@@ -8,54 +8,70 @@
     <div class="card shadow-sm mb-4 border-success">
         <div class="card-body">
             <h4 class="card-title text-success">Phase 2 — MCP Tool Server</h4>
-            <p class="text-muted mb-3">Model Context Protocol &middot; Tool discovery &middot; Role-based access control</p>
+            <p class="text-muted mb-3">Model Context Protocol &middot; Verified spike &middot; Migration deferred</p>
 
+            <div class="alert alert-success py-2 px-3 mb-3">
+                <strong>Status (August 2026):</strong> server built and verified end-to-end.
+                Migrating the agent tools onto it was evaluated and deliberately deferred.
+            </div>
+
+            <h6 class="fw-semibold mt-3">What Exists</h6>
             <p>
-                Extract all agent tools into a standalone <strong>MCP server</strong>
-                using the official <code>ModelContextProtocol</code> C# SDK.
-                The Blazor application becomes an MCP client that discovers and invokes
-                tools over HTTP+SSE instead of calling them in-process.
+                <code>ClaimsIntake.McpServer</code> is a working ASP.NET MCP host built on the official
+                <code>ModelContextProtocol</code> C# SDK, with dual transport — stdio (via
+                <code>--stdio</code>) and HTTP. It exposes a single <code>Ping</code> tool.
+            </p>
+            <p>
+                The server was registered with a Claude client (Claude Desktop / Claude Code) and
+                <code>Ping</code> was invoked successfully across the protocol boundary. The
+                <code>[Description]</code> attribute written in C# arrived at the client verbatim as the
+                tool description — the same "descriptions are prompt, not documentation" principle that
+                governs the in-process tools, now crossing a process boundary. Interoperability is proven;
+                that was the point of the spike.
             </p>
 
-            <h6 class="fw-semibold mt-3">Server — Tool Registration</h6>
+            <h6 class="fw-semibold mt-3">Decision — Tools Stay in Core</h6>
             <p>
-                A new <code>ClaimsIntake.McpServer</code> ASP.NET project hosts the existing
-                tool methods (<code>GetPolicyDetail</code>, <code>GetClaimsHistory</code>,
-                <code>GetClaimDetail</code>, <code>FindClaimsByVehicle</code>,
-                <code>SearchPolicyConditions</code>) decorated with <code>[McpServerTool]</code>.
-                The SDK handles <code>tools/list</code> discovery and <code>tools/call</code>
-                execution automatically. DI setup mirrors the current Core project —
-                <code>PolicyService</code>, <code>PolicyConditionsSearch</code>,
-                and the embedding generator are registered the same way.
+                The five agent tools remain in <code>ClaimsIntake.Core</code>, registered in-process by
+                <code>ClaimAssistantFactory.BuildTools</code>. Moving them was rejected for now on three
+                grounds:
+            </p>
+            <ul>
+                <li>
+                    <strong>Single consumer.</strong> The Blazor app is the only client. The migration
+                    would add a process, a deployment unit, a network hop and duplicated configuration
+                    without delivering anything the in-process version does not already provide.
+                </li>
+                <li>
+                    <strong>Duplicate embedding index.</strong> <code>SearchPolicyConditions</code> depends
+                    on the in-memory vector index. The web app has to keep building its own regardless,
+                    because <code>ExclusionChecker</code> calls the search directly inside the pipeline —
+                    so the MCP server would build and pay for a second one.
+                </li>
+                <li>
+                    <strong>Weakened invariant.</strong> <code>WithToolsFromAssembly()</code> is
+                    convention-based auto-registration: any class marked <code>[McpServerToolType]</code>
+                    is exposed automatically. That replaces the explicit five-item list which
+                    <code>ClaimAssistantFactoryTests</code> pins down, and silently removes the guard
+                    against a mutating tool being added unnoticed.
+                </li>
+            </ul>
+            <p>
+                <strong>Revisit when a second consumer appears</strong> — another service, a different
+                agent, or an external MCP client needing the same data. Reusability is the only benefit
+                that justifies the cost.
             </p>
 
-            <h6 class="fw-semibold mt-3">Server — Role-Based Tool Filtering</h6>
-            <p>
-                Each API key maps to a role (e.g. <code>analyst</code>, <code>admin</code>)
-                configured in <code>appsettings.json</code>. Middleware reads the
-                <code>x-api-key</code> header, resolves the role, and filters the
-                <code>tools/list</code> response to only the tools that role is allowed to use.
-                A <code>tools/call</code> request for a tool outside the role's allow-list
-                returns 403. This ensures enforcement at the server boundary, not just
-                in client code.
-            </p>
-
-            <h6 class="fw-semibold mt-3">Client — ClaimAssistantFactory</h6>
-            <p>
-                <code>ClaimAssistantFactory</code> connects to the MCP server as a client,
-                sends the appropriate API key for the agent's role, and receives only the
-                permitted tools via discovery. It then passes them to <code>ChatClientAgent</code>
-                exactly as before. A client-side allow-list provides a second layer of filtering
-                (defense in depth) — even if the server misconfigures a role, the client
-                will not hand an unexpected tool to the agent.
-            </p>
-
-            <h6 class="fw-semibold mt-3">Testing &amp; Interoperability</h6>
+            <h6 class="fw-semibold mt-3">Prerequisites Before Any Real Tool Is Exposed</h6>
             <p class="mb-0">
-                The MCP server can be tested independently using MCP Inspector (a debug UI)
-                or by adding it to Claude Desktop's <code>claude_desktop_config.json</code>.
-                This proves that the same tools are consumable by any MCP-compatible client,
-                not just the Blazor application.
+                <code>Ping</code> is harmless. <code>GetPolicyDetail</code> is not — it returns the
+                policyholder&rsquo;s name, VIN and registration plate, which is personal data under GDPR.
+                Before any real tool moves onto the server: replace <code>AllowedHosts: *</code> with
+                internal-only ingress, require authentication on the HTTP transport, and enforce
+                authorization on <code>tools/call</code> — filtering the <code>tools/list</code> response
+                alone is not a security boundary, since a client can still call a hidden tool by name.
+                The tool-set test must move with the tools, scanning <code>[McpServerTool]</code>
+                attributes, so the read-only guarantee does not stay behind in Core.
             </p>
         </div>
     </div>
