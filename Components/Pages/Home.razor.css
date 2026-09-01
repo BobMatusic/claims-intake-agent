@@ -1,0 +1,115 @@
+/* Legend for the tool badges shown on assistant replies: hovering the "i" next to
+   "Konzultácia s agentom" explains what each tool name means. Pure CSS — the app
+   loads Bootstrap's stylesheet but not its JavaScript, so tooltips/popovers are
+   not available. */
+
+.tool-info-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tool-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: 0 0 auto;
+    border: 1px solid #adb5bd;
+    border-radius: 50%;
+    color: #6c757d;
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 0.74rem;
+    line-height: 1;
+    cursor: help;
+    user-select: none;
+    transition: color .12s ease, border-color .12s ease;
+}
+
+.tool-info:hover,
+.tool-info:focus-visible {
+    color: #0d6efd;
+    border-color: #0d6efd;
+    outline: none;
+}
+
+.tool-info:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, .25);
+}
+
+.tool-info-panel {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    left: 0;
+    z-index: 1080;
+    width: min(28rem, 100%);
+    padding: 0.85rem 1rem;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, .15);
+    text-align: left;
+    cursor: default;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity .12s ease, transform .12s ease, visibility .12s;
+}
+
+.tool-info:hover ~ .tool-info-panel,
+.tool-info:focus ~ .tool-info-panel,
+.tool-info-panel:hover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.tool-info-head {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6c757d;
+    margin-bottom: 0.6rem;
+}
+
+.tool-info-panel dl {
+    margin: 0;
+}
+
+.tool-info-panel dt {
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 0.78rem;
+    color: #0d6efd;
+    margin-top: 0.6rem;
+}
+
+.tool-info-panel dt:first-of-type {
+    margin-top: 0;
+}
+
+.tool-info-panel dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: #495057;
+}
+
+.tool-info-foot {
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #6c757d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tool-info,
+    .tool-info-panel {
+        transition: none;
+    }
+}

@@ -1,18 +1,18 @@
-@page "/"
+﻿@page "/"
 @using ClaimsIntake.Core.Models
 
 <PageTitle>Nahlásenie poistnej udalosti</PageTitle>
 
 <div class="container py-4" style="max-width: 1100px;">
     <h1 class="mb-1">Nahlásenie poistnej udalosti</h1>
-    <p class="text-muted mb-4">Nahraj hlásenie a prípadné faktúry (max 3 súborov, max 5 MB na súbor).</p>
+    <p class="text-muted mb-4">Nahraj hlásenie, faktúry a fotodokumentáciu (max 10 súborov, max 5 MB na súbor).</p>
     <p class="text-muted small">Agent: @(agentEnabled ? "zapnutý" : "vypnutý")</p>
 
     <div class="card shadow-sm mb-3">
         <div class="card-body">
             <label class="form-label fw-semibold">Súbory</label>
             <InputFile OnChange="OnFilesSelected" accept="image/*,application/pdf" multiple class="form-control" />
-            <div class="form-text">Povolené: JPG, PNG, PDF (max 5 MB na súbor, max 3 súborov).</div>
+            <div class="form-text">Povolené: JPG, PNG, PDF (max 5 MB na súbor, max 10 súborov).</div>
 
             @if (!string.IsNullOrEmpty(error))
             {
@@ -42,6 +42,7 @@
                                             @onchange="e => file.Type = Enum.Parse<DocumentType>((string)e.Value!)">
                                         <option value="@DocumentType.ClaimReport">Hlásenie</option>
                                         <option value="@DocumentType.Invoice">Faktúra</option>
+                                        <option value="@DocumentType.Photo">Fotodokumentácia</option>
                                     </select>
                                 </td>
                                 <td>
@@ -123,6 +124,27 @@
                             </ul>
                         }
 
+                        @{
+                            var photos = uploadedFiles.Where(f => f.Type == DocumentType.Photo).ToList();
+                        }
+                        @if (photos.Count > 0)
+                        {
+                            <p class="fw-semibold mb-2 mt-3">Fotodokumentácia (@photos.Count):</p>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                @foreach (var photo in photos)
+                                {
+                                    var mime = Path.GetExtension(photo.FileName).ToLowerInvariant() == ".png" ? "image/png" : "image/jpeg";
+                                    var dataUri = $"data:{mime};base64,{Convert.ToBase64String(photo.Content)}";
+                                    var capturedUri = dataUri;
+                                    var capturedName = photo.FileName;
+                                    <img src="@dataUri" alt="@photo.FileName" title="@photo.FileName"
+                                         @onclick="() => OpenPhotoPreview(capturedUri, capturedName)"
+                                         style="width: 100px; height: 75px; object-fit: cover; border-radius: 6px; border: 1px solid #dee2e6; cursor: pointer;"
+                                         class="shadow-sm" />
+                                }
+                            </div>
+                        }
+
                         <div class="mt-3">
                             <button class="btn btn-success me-2" @onclick="() => Resolve(true)">Schváliť</button>
                             <button class="btn btn-outline-danger" @onclick="() => Resolve(false)">Zamietnuť</button>
@@ -134,7 +156,34 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-body d-flex flex-column">
-                        <h6 class="fw-semibold mb-3">Konzultácia s agentom</h6>
+                        <div class="tool-info-row mb-3">
+                            <h6 class="fw-semibold mb-0">Konzultácia s agentom</h6>
+                            <span class="tool-info" tabindex="0" role="button"
+                                  aria-label="Zobraziť nástroje, ktoré má agent k dispozícii">i</span>
+                            <div class="tool-info-panel" role="tooltip">
+                                <div class="tool-info-head">Nástroje, ktoré má agent k dispozícii</div>
+                                <dl>
+                                    <dt>GetPolicyDetail</dt>
+                                    <dd>Detail zmluvy — platnosť, stav, rozsah krytia, spoluúčasť, limit a vozidlá.</dd>
+
+                                    <dt>GetClaimsHistory</dt>
+                                    <dd>Nároky na zmluve za zadaný počet mesiacov: dátum, typ škody, suma, stav.</dd>
+
+                                    <dt>GetClaimDetail</dt>
+                                    <dd>Detail jedného nároku — čo sa opravovalo, servis, faktúra, plnenie.</dd>
+
+                                    <dt>FindClaimsByVehicle</dt>
+                                    <dd>Nároky na ŠPZ naprieč všetkými zmluvami — zachytí zmenu majiteľa.</dd>
+
+                                    <dt>SearchPolicyConditions</dt>
+                                    <dd>Vyhľadá ustanovenia v poistných podmienkach — krytie, povinnosti, výluky.</dd>
+                                </dl>
+                                <div class="tool-info-foot">
+                                    Všetky sú len na čítanie. Agent nevie nárok schváliť, zamietnuť ani zmeniť —
+                                    rozhoduje výhradne likvidátor.
+                                </div>
+                            </div>
+                        </div>
 
                         <div id="chat-scroll" class="flex-grow-1" style="min-height: 300px; max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.75rem; background: #fafafa;">
                             @if (chatMessages.Count == 0 && !isChatProcessing)
@@ -281,6 +330,25 @@
                     <button class="btn btn-sm btn-outline-secondary" @onclick="DownloadSummaryAsync">
                         Stiahnuť zhrnutie (.md)
                     </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (previewPhotoUri is not null)
+    {
+        <div class="modal-backdrop fade show"></div>
+        <div class="modal fade show d-block" tabindex="-1" @onclick="ClosePhotoPreview">
+            <div class="modal-dialog modal-lg modal-dialog-centered" @onclick:stopPropagation>
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0">@previewPhotoName</h6>
+                        <button type="button" class="btn-close" @onclick="ClosePhotoPreview"></button>
+                    </div>
+                    <div class="modal-body text-center p-2">
+                        <img src="@previewPhotoUri" alt="@previewPhotoName"
+                             style="max-width: 100%; max-height: 75vh; object-fit: contain;" />
+                    </div>
                 </div>
             </div>
         </div>

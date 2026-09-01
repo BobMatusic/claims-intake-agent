@@ -3,7 +3,8 @@ namespace ClaimsIntake.Core.Models;
 public enum DocumentType
 {
     ClaimReport,
-    Invoice
+    Invoice,
+    Photo
 }
 
 public class UploadedDocument

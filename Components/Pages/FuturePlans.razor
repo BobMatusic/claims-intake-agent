@@ -76,45 +76,47 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4 border-primary">
+    <div class="card shadow-sm mb-4 border-success">
         <div class="card-body">
-            <h4 class="card-title text-primary">Phase 3 — Multi-Agent Orchestration</h4>
+            <h4 class="card-title text-success">Phase 3 — Multi-Agent Orchestration</h4>
             <p class="text-muted mb-3">Microsoft Agent Framework &middot; Visual verification &middot; Damage classification</p>
 
-            <p>
-                Upgrade the current single-agent pipeline to a <strong>multi-agent architecture</strong>
-                using the Microsoft Agent Framework.
-            </p>
+            <div class="alert alert-success py-2 px-3 mb-3">
+                <strong>Status (August 2026):</strong> implemented and operational.
+                Two agents run concurrently via <code>ConcurrentWorkflowBuilder</code>;
+                findings are merged into the decision engine as soft signals.
+            </div>
 
             <h6 class="fw-semibold mt-3">Photo Verification Agent</h6>
             <p>
-                A dedicated agent whose sole responsibility is to verify uploaded photos against the claim report.
-                It answers two questions:
+                A dedicated <code>ChatClientAgent</code> compares uploaded photos against the claim
+                report and invoice. It evaluates each invoice line item and assigns a verdict:
             </p>
             <ul>
                 <li>
-                    <strong>Consistency check</strong> — do the photos match what the report describes?
-                    If the report says "front bumper damage" but the photos show a scratched door,
-                    the agent flags the discrepancy as a signal for the adjuster.
+                    <strong>Confirmed</strong> — the photos show damage consistent with the item.
                 </li>
                 <li>
-                    <strong>Damage classification</strong> — the model identifies which parts are damaged,
-                    the extent of damage (surface scratch vs. structural deformation), and whether
-                    the damage is consistent with the reported incident type.
-                    Code then compares this classification against a reference table of part prices
-                    and labor rates to flag invoices that fall outside the expected range.
-                    The model answers "what do I see", not "how much should it cost" — the second
-                    question belongs to a lookup table.
+                    <strong>Suspicious</strong> — the photos contradict the item (e.g. invoice claims
+                    rear bumper repair, but photos show the rear is intact).
+                </li>
+                <li>
+                    <strong>Unverifiable</strong> — the relevant part of the vehicle is not visible
+                    in the photos, so the item cannot be assessed.
                 </li>
             </ul>
+            <p>
+                Items that are inherently unverifiable from photos — labor hours, consumable
+                materials, paint — are excluded from evaluation to reduce noise.
+            </p>
 
             <h6 class="fw-semibold mt-3">Orchestration</h6>
             <p>
-                A central orchestrator decides which agents to invoke and in what order.
-                For a standard claim, the investigation agent runs first; the photo agent runs
-                in parallel or on demand. The orchestrator merges their findings into a single
-                set of signals for the decision engine. This is more deterministic and easier
-                to trace than peer-to-peer handoffs between agents.
+                <code>ClaimOrchestrator</code> builds and runs a concurrent workflow using
+                <code>AgentWorkflowBuilder.BuildConcurrent</code> from the Microsoft Agent Framework.
+                The Investigation agent and Photo Verification agent run in parallel.
+                <code>MergePhotoFindings</code> converts photo verdicts into soft signals
+                that surface in the approval UI alongside policy exclusions and hard blocks.
             </p>
 
             <h6 class="fw-semibold mt-3">Key Constraint</h6>

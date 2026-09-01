@@ -34,3 +34,6 @@ run-local.ps1
 
 # Misc
 *.log
+
+# Test fixtures — crash photos from Wikimedia Commons, fetched locally, not versioned
+Content/Images/

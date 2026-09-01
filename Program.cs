@@ -57,7 +57,8 @@ builder.Services.AddSingleton(new PolicyService(policyData));
 builder.Services.AddSingleton<DecisionEngine>();
 builder.Services.AddSingleton<ClaimEvaluator>();
 builder.Services.AddSingleton<IClaimAssistantFactory, ClaimAssistantFactory>();
-builder.Services.AddSingleton<ClaimsAgent>();
+builder.Services.AddTransient<InvestigationPipelineClient>();
+builder.Services.AddTransient<ClaimOrchestrator>();
 
 builder.Configuration.AddAzureAppConfiguration(options =>
 {

@@ -16,7 +16,7 @@ namespace ClaimsIntake.Web.Components.Pages;
 public partial class Home : IAsyncDisposable
 {
     [Inject] private AzureDocumentIntelligence DocIntel { get; set; } = default!;
-    [Inject] private ClaimsAgent Agent { get; set; } = default!;
+    [Inject] private ClaimOrchestrator Orchestrator { get; set; } = default!;
     [Inject] private IFeatureManager FeatureManager { get; set; } = default!;
     [Inject] private IClaimAssistantFactory AssistantFactory { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -34,9 +34,12 @@ public partial class Home : IAsyncDisposable
     private TaskCompletionSource<bool>? approvalTcs;
 
     private const long MaxFileSize = 5 * 1024 * 1024;
-    private const int MaxFiles = 3;
+    private const int MaxFiles = 10;
 
     private static readonly string[] AllowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+
+    private string? previewPhotoUri;
+    private string? previewPhotoName;
 
     private IClaimAssistant? assistant;
     private readonly List<ChatBubble> chatMessages = [];
@@ -103,6 +106,8 @@ public partial class Home : IAsyncDisposable
             return DocumentType.ClaimReport;
         if (name.Contains("faktura") || name.Contains("faktúra") || name.Contains("invoice"))
             return DocumentType.Invoice;
+        if (name.Contains("foto") || name.Contains("photo") || name.Contains("img") || name.Contains("snimk"))
+            return DocumentType.Photo;
         return null;
     }
 
@@ -144,14 +149,16 @@ public partial class Home : IAsyncDisposable
 
         try
         {
-            var extractionTasks = uploadedFiles.Select(async doc =>
-            {
-                var result = await DocIntel.AnalyzeAsync(doc.Content);
-                doc.ExtractedText = result.FullText;
-            });
+            var extractionTasks = uploadedFiles
+                .Where(doc => doc.Type != DocumentType.Photo)
+                .Select(async doc =>
+                {
+                    var result = await DocIntel.AnalyzeAsync(doc.Content);
+                    doc.ExtractedText = result.FullText;
+                });
             await Task.WhenAll(extractionTasks);
 
-            analysisResult = await Agent.AnalyzeClaimAsync(uploadedFiles, RequestApprovalAsync);
+            analysisResult = await Orchestrator.RunAsync(uploadedFiles, RequestApprovalAsync);
         }
         catch (ClientResultException ex) when (ex.Status == 400 && ex.Message.Contains("content_filter"))
         {
@@ -188,6 +195,18 @@ public partial class Home : IAsyncDisposable
 
         await InvokeAsync(StateHasChanged);
         return await approvalTcs.Task;
+    }
+
+    private void OpenPhotoPreview(string dataUri, string fileName)
+    {
+        previewPhotoUri = dataUri;
+        previewPhotoName = fileName;
+    }
+
+    private void ClosePhotoPreview()
+    {
+        previewPhotoUri = null;
+        previewPhotoName = null;
     }
 
     private async void Resolve(bool approved)
